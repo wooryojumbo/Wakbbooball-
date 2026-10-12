@@ -26,12 +26,13 @@
 
     .ball-container {
       position: relative;
-      width: 240px;
-      height: 240px;
+      width: 260px;
+      height: 260px;
       display: flex;
       justify-content: center;
       align-items: center;
       cursor: pointer;
+      perspective: 1000px;
     }
 
     .wakbboo-ball {
@@ -43,9 +44,11 @@
         0 20px 35px rgba(0, 0, 0, 0.12),
         inset -15px -15px 30px rgba(0, 0, 0, 0.08),
         inset 15px 15px 25px rgba(255, 255, 255, 0.9);
-      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.25);
+      /* 자국이 남고 천천히 쫀득하게 돌아오는 트랜지션 (돌아올 때만 부드럽게) */
+      transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.25), border-radius 0.8s ease;
       backdrop-filter: blur(2px);
       overflow: hidden;
+      transform-origin: center center;
     }
 
     .wakbboo-ball::before {
@@ -61,6 +64,7 @@
       filter: blur(1px);
     }
 
+    /* 왁뿌볼 3가지 타입 */
     .type-1 {
       background: radial-gradient(circle at 35% 35%, 
         rgba(255, 182, 193, 0.95) 0%, 
@@ -82,9 +86,9 @@
         rgba(230, 230, 250, 0.85) 90%);
     }
 
+    /* 누를 때 즉각적으로 찌그러지며 자국이 남는 스타일 (지연 시간 없음) */
     .wakbboo-ball.pressed {
-      transform: scale(1.22, 0.68) translateY(25px);
-      transition: transform 0.04s ease-out;
+      transition: transform 0.05s ease-out, border-radius 0.05s ease-out !important;
     }
 
     .selector-bar {
@@ -142,66 +146,86 @@
 
       const now = audioCtx.currentTime;
 
-      // 1. 왁스가 바삭하게 '콰직!' 깨지는 노이즈 사운드 (화이트 노이즈 + 하이패스 필터)
-      const bufferSize = audioCtx.sampleRate * 0.08; // 0.08초 동안 짧게 바삭!
+      // 1. 왁스가 바삭하게 '콰작!' 깨지는 입체 크런치 노이즈
+      const bufferSize = audioCtx.sampleRate * 0.1;
       const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
       const output = buffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
+        output[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize); // 점점 줄어드는 크런치
       }
 
       const noise = audioCtx.createBufferSource();
       noise.buffer = buffer;
 
       const filter = audioCtx.createBiquadFilter();
-      filter.type = 'highpass';
-      filter.frequency.setValueAtTime(1200, now); // 바삭한 고음역대
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(2500, now); // 바삭한 왁스 파열음 대역
+      filter.Q.setValueAtTime(3, now);
 
       const noiseGain = audioCtx.createGain();
-      noiseGain.gain.setValueAtTime(0.5, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+      noiseGain.gain.setValueAtTime(0.7, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
 
       noise.connect(filter);
       filter.connect(noiseGain);
       noiseGain.connect(audioCtx.destination);
 
       noise.start(now);
-      noise.stop(now + 0.08);
+      noise.stop(now + 0.1);
 
-      // 2. 내부 젤리가 뭉개지며 묵직하게 찌그러지는 쫀득한 사운드
+      // 2. 내부 젤리가 짓눌리는 묵직한 쫀득 소리
       const osc = audioCtx.createOscillator();
       const oscGain = audioCtx.createGain();
 
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(320, now + 0.04);
-      osc.frequency.exponentialRampToValueAtTime(80, now + 0.18);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(280, now + 0.03);
+      osc.frequency.exponentialRampToValueAtTime(70, now + 0.2);
 
-      oscGain.gain.setValueAtTime(0.4, now + 0.04);
-      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+      oscGain.gain.setValueAtTime(0.5, now + 0.03);
+      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
 
       osc.connect(oscGain);
       oscGain.connect(audioCtx.destination);
 
-      osc.start(now + 0.04);
-      osc.stop(now + 0.18);
+      osc.start(now + 0.03);
+      osc.stop(now + 0.2);
     }
 
-    function handleDown(e) {
+    // 터치/클릭한 위치를 계산해서 그 방향으로 찌그러지며 자국 남기기
+    function handlePress(e) {
       e.preventDefault();
-      mainBall.classList.add('pressed');
       playWaxCrackleSound();
+
+      const rect = mainBall.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      // 볼 중심 기준 클릭/터치 방향 구하기 (-1 ~ 1 사이 값)
+      const x = clientX - (rect.left + rect.width / 2);
+      const y = clientY - (rect.top + rect.height / 2);
+      
+      const moveX = (x / (rect.width / 2)) * 25;
+      const moveY = (y / (rect.height / 2)) * 25;
+
+      mainBall.classList.add('pressed');
+      // 누른 방향으로 찌그러지고 모서리 모양이 변해 자국이 남는 형태
+      mainBall.style.transform = `translate(${moveX}px, ${moveY}px) scale(1.18, 0.72)`;
+      mainBall.style.borderRadius = '40% 60% 50% 50% / 50% 40% 60% 50%';
     }
 
-    function handleUp() {
+    // 손을 떼도 자국이 남았다가 천천히 복원되도록 함 (즉시 복원되지 않음)
+    function handleRelease() {
       mainBall.classList.remove('pressed');
+      // 원래 모양으로 서서히 돌아옴
+      mainBall.style.transform = 'translate(0px, 0px) scale(1)';
+      mainBall.style.borderRadius = '50%';
     }
 
-    ballContainer.addEventListener('mousedown', handleDown);
-    ballContainer.addEventListener('mouseup', handleUp);
-    ballContainer.addEventListener('mouseleave', handleUp);
+    ballContainer.addEventListener('mousedown', handlePress);
+    window.addEventListener('mouseup', handleRelease);
 
-    ballContainer.addEventListener('touchstart', handleDown, { passive: false });
-    ballContainer.addEventListener('touchend', handleUp);
+    ballContainer.addEventListener('touchstart', handlePress, { passive: false });
+    window.addEventListener('touchend', handleRelease);
 
     function selectType(typeClass, el) {
       mainBall.className = 'wakbboo-ball ' + typeClass;
