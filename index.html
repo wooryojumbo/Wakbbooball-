@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>말랑말랑 왁뿌볼 젤리</title>
+  <title>Wakbbooball</title>
   <style>
     * {
       box-sizing: border-box;
@@ -19,166 +19,92 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      background: linear-gradient(135deg, #ffe6f0 0%, #e8f0fe 100%);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f0f3f8;
+      font-family: sans-serif;
       overflow: hidden;
     }
 
-    .title {
-      font-size: 1.4rem;
-      font-weight: 800;
-      color: #555;
-      margin-bottom: 8px;
-    }
-
-    .subtitle {
-      font-size: 0.9rem;
-      color: #888;
-      margin-bottom: 40px;
-    }
-
-    /* 왁뿌볼 볼 장침 디스플레이 (젤리) */
-    .squishy-ball {
-      width: 180px;
-      height: 180px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, #ff9ebb, #ff5388);
-      box-shadow: 
-        0 20px 30px rgba(255, 83, 136, 0.3),
-        inset 0 -10px 20px rgba(0, 0, 0, 0.15),
-        inset 0 10px 15px rgba(255, 255, 255, 0.6);
-      cursor: pointer;
+    .ball-container {
+      position: relative;
+      width: 240px;
+      height: 240px;
       display: flex;
       justify-content: center;
       align-items: center;
-      position: relative;
-      /* 쫀득한 젤리 탄성 애니메이션 설정 */
-      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      cursor: pointer;
     }
 
-    /* 왁뿌볼 귀여운 얼굴 마크 */
-    .face {
-      display: flex;
-      gap: 30px;
-      position: relative;
-    }
-
-    .eye {
-      width: 14px;
-      height: 18px;
-      background-color: #333;
+    .wakbboo-ball {
+      width: 220px;
+      height: 220px;
       border-radius: 50%;
       position: relative;
+      box-shadow: 
+        0 20px 35px rgba(0, 0, 0, 0.12),
+        inset -15px -15px 30px rgba(0, 0, 0, 0.08),
+        inset 15px 15px 25px rgba(255, 255, 255, 0.9);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.25);
+      backdrop-filter: blur(2px);
+      overflow: hidden;
     }
 
-    .eye::after {
+    .wakbboo-ball::before {
       content: '';
       position: absolute;
-      top: 3px;
-      left: 3px;
-      width: 5px;
-      height: 5px;
-      background-color: #fff;
+      top: 12%;
+      left: 18%;
+      width: 45px;
+      height: 25px;
       border-radius: 50%;
+      background: rgba(255, 255, 255, 0.75);
+      transform: rotate(-35deg);
+      filter: blur(1px);
     }
 
-    .mouth {
-      position: absolute;
-      bottom: -12px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 16px;
-      height: 8px;
-      border-bottom: 3px solid #333;
-      border-radius: 0 0 10px 10px;
+    .type-1 {
+      background: radial-gradient(circle at 35% 35%, 
+        rgba(255, 182, 193, 0.95) 0%, 
+        rgba(173, 216, 230, 0.9) 45%, 
+        rgba(255, 255, 204, 0.85) 85%);
     }
 
-    /* 누르고 있을 때 푹 찌그러지는 효과 */
-    .squishy-ball.pressed {
-      transform: scale(1.2, 0.7) translateY(20px);
-      transition: transform 0.05s ease-out;
+    .type-2 {
+      background: radial-gradient(circle at 35% 35%, 
+        rgba(168, 230, 207, 0.95) 0%, 
+        rgba(125, 207, 255, 0.9) 50%, 
+        rgba(218, 187, 255, 0.85) 90%);
     }
 
-    .count-badge {
-      margin-top: 40px;
-      padding: 8px 16px;
-      background: rgba(255, 255, 255, 0.7);
-      border-radius: 20px;
-      font-size: 0.9rem;
-      color: #666;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    }
-  </style>
-</head>
-<body>
-
-  <div class="title">왁뿌볼 말랑이 🐾</div>
-  <div class="subtitle">꾹꾹 눌러보세요!</div>
-
-  <div class="squishy-ball" id="ball">
-    <div class="face">
-      <div class="eye"></div>
-      <div class="eye"></div>
-      <div class="mouth"></div>
-    </div>
-  </div>
-
-  <div class="count-badge">
-    누른 횟수: <span id="count">0</span>회
-  </div>
-
-  <script>
-    const ball = document.getElementById('ball');
-    const countEl = document.getElementById('count');
-    let count = 0;
-
-    // Web Audio API로 외부 파일 없이 쫀득한 소리 생성
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    function playSquishSound() {
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-
-      // 주파수를 빠르게 내려서 "뽁/뾱" 하는 말랑한 소리 연출
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.12);
-
-      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
-
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.12);
+    .type-3 {
+      background: radial-gradient(circle at 35% 35%, 
+        rgba(255, 209, 163, 0.95) 0%, 
+        rgba(255, 154, 162, 0.9) 50%, 
+        rgba(230, 230, 250, 0.85) 90%);
     }
 
-    // 누를 때 (마우스/터치)
-    function handleDown(e) {
-      e.preventDefault();
-      ball.classList.add('pressed');
-      playSquishSound();
-      count++;
-      countEl.textContent = count;
+    .wakbboo-ball.pressed {
+      transform: scale(1.22, 0.68) translateY(25px);
+      transition: transform 0.04s ease-out;
     }
 
-    // 뗄 때
-    function handleUp() {
-      ball.classList.remove('pressed');
+    .selector-bar {
+      margin-top: 60px;
+      display: flex;
+      gap: 18px;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(10px);
+      border-radius: 30px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
     }
 
-    // 이벤트 리스너 등록 (터치 & 마우스 동시 지원)
-    ball.addEventListener('mousedown', handleDown);
-    ball.addEventListener('mouseup', handleUp);
-    ball.addEventListener('mouseleave', handleUp);
+    .mini-ball {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: transform 0.2s, border-color 0.2s;
+    }
 
-    ball.addEventListener('touchstart', handleDown, { passive: false });
-    ball.addEventListener('touchend', handleUp);
-  </script>
-</body>
-</html>
+    .mini
