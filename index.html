@@ -107,4 +107,108 @@
       transition: transform 0.2s, border-color 0.2s;
     }
 
-    .mini
+    .mini-ball:active {
+      transform: scale(0.9);
+    }
+
+    .mini-ball.active {
+      border-color: #555;
+      transform: scale(1.15);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ball-container" id="ballContainer">
+    <div class="wakbboo-ball type-1" id="mainBall"></div>
+  </div>
+
+  <div class="selector-bar">
+    <div class="mini-ball type-1 active" onclick="selectType('type-1', this)"></div>
+    <div class="mini-ball type-2" onclick="selectType('type-2', this)"></div>
+    <div class="mini-ball type-3" onclick="selectType('type-3', this)"></div>
+  </div>
+
+  <script>
+    const mainBall = document.getElementById('mainBall');
+    const ballContainer = document.getElementById('ballContainer');
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playWaxCrackleSound() {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const now = audioCtx.currentTime;
+
+      // 1. 왁스가 바삭하게 '콰직!' 깨지는 노이즈 사운드 (화이트 노이즈 + 하이패스 필터)
+      const bufferSize = audioCtx.sampleRate * 0.08; // 0.08초 동안 짧게 바삭!
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(1200, now); // 바삭한 고음역대
+
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.5, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+
+      noise.start(now);
+      noise.stop(now + 0.08);
+
+      // 2. 내부 젤리가 뭉개지며 묵직하게 찌그러지는 쫀득한 사운드
+      const osc = audioCtx.createOscillator();
+      const oscGain = audioCtx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(320, now + 0.04);
+      osc.frequency.exponentialRampToValueAtTime(80, now + 0.18);
+
+      oscGain.gain.setValueAtTime(0.4, now + 0.04);
+      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+
+      osc.connect(oscGain);
+      oscGain.connect(audioCtx.destination);
+
+      osc.start(now + 0.04);
+      osc.stop(now + 0.18);
+    }
+
+    function handleDown(e) {
+      e.preventDefault();
+      mainBall.classList.add('pressed');
+      playWaxCrackleSound();
+    }
+
+    function handleUp() {
+      mainBall.classList.remove('pressed');
+    }
+
+    ballContainer.addEventListener('mousedown', handleDown);
+    ballContainer.addEventListener('mouseup', handleUp);
+    ballContainer.addEventListener('mouseleave', handleUp);
+
+    ballContainer.addEventListener('touchstart', handleDown, { passive: false });
+    ballContainer.addEventListener('touchend', handleUp);
+
+    function selectType(typeClass, el) {
+      mainBall.className = 'wakbboo-ball ' + typeClass;
+      document.querySelectorAll('.mini-ball').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      playWaxCrackleSound();
+    }
+  </script>
+</body>
+</html>
